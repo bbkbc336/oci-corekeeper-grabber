@@ -30,7 +30,7 @@ ssh-keygen -t rsa -b 4096 -N "" -f ck_ssh -q
 for cfg in "2 12" "1 6"; do
   set -- $cfg
   echo "Trying ${1} OCPU / ${2} GB ..."
-  if oci compute instance launch -c "$C" --availability-domain "$AD" --shape VM.Standard.A1.Flex \
+  if oci --no-retry compute instance launch -c "$C" --availability-domain "$AD" --shape VM.Standard.A1.Flex \
       --shape-config "{\"ocpus\":$1,\"memoryInGBs\":$2}" --image-id "$IMG" --subnet-id "$SUB" \
       --assign-public-ip true --display-name "$NAME" \
       --ssh-authorized-keys-file ck_ssh.pub --user-data-file scripts/cloud-init.sh \

@@ -2,7 +2,7 @@ name: Grab OCI A1 for Core Keeper
 
 on:
   schedule:
-    - cron: "*/30 * * * *"   # every 30 minutes (keeps private-repo minutes under the free 2,000/month)
+    - cron: "7 * * * *"   # hourly (keeps private-repo minutes under the free 2,000/month)
   workflow_dispatch:
 
 concurrency:
@@ -17,6 +17,8 @@ jobs:
   grab:
     runs-on: ubuntu-latest
     timeout-minutes: 45
+    env:
+      SUPPRESS_LABEL_WARNING: "True"
     steps:
       - uses: actions/checkout@v4
 
