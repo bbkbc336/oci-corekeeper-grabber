@@ -53,6 +53,7 @@ jobs:
 
       - name: Wait for server and read Game ID
         if: steps.grab.outputs.status == 'launched'
+        continue-on-error: true
         run: |
           ID=$(cat instance_id)
           oci compute instance get --instance-id "$ID" --wait-for-state RUNNING --max-wait-seconds 900 >/dev/null
@@ -74,7 +75,7 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Disable this workflow (job done)
-        if: steps.grab.outputs.status == 'launched' || steps.grab.outputs.status == 'exists'
+        if: always() && (steps.grab.outputs.status == 'launched' || steps.grab.outputs.status == 'exists')
         env:
           GH_TOKEN: ${{ github.token }}
         run: gh workflow disable grab.yml --repo "${{ github.repository }}"
