@@ -23,9 +23,14 @@ AD=$(oci iam availability-domain list -c "$C" --query 'data[0].name' --raw-outpu
 IMG=$(oci compute image list -c "$C" --operating-system "Canonical Ubuntu" --operating-system-version "22.04" \
   --shape VM.Standard.A1.Flex --sort-by TIMECREATED --sort-order DESC --query 'data[0].id' --raw-output)
 SUB=$(oci network subnet list -c "$C" --display-name ck-subnet --query 'data[0].id' --raw-output)
-echo "AD=$AD"; echo "IMG=$IMG"; echo "SUB=$SUB"
+for v in "$AD" "$IMG" "$SUB"; do [ -n "$v" ] && [ "$v" != "null" ] || { echo "Lookup failed (AD/image/subnet)."; echo "status=error" >> "$GITHUB_OUTPUT"; exit 1; }; done
+echo "lookups ok"
 
-ssh-keygen -t rsa -b 4096 -N "" -f ck_ssh -q
+# Public key only - private key stays on the owner's PC (safe for a public repo).
+if [ -z "${SSH_PUBLIC_KEY:-}" ]; then
+  echo "SSH_PUBLIC_KEY secret is empty."; echo "status=error" >> "$GITHUB_OUTPUT"; exit 1
+fi
+printf '%s\n' "$SSH_PUBLIC_KEY" > ck_ssh.pub
 
 for cfg in "2 12" "1 6"; do
   set -- $cfg

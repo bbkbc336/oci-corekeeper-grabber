@@ -39,39 +39,19 @@ jobs:
 
       - name: Try to launch VM
         id: grab
+        env:
+          SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
         run: bash scripts/grab.sh
 
-      - name: Save SSH key (download from this run's Artifacts)
-        if: steps.grab.outputs.status == 'launched'
-        uses: actions/upload-artifact@v4
-        with:
-          name: corekeeper-ssh-key
-          path: |
-            ck_ssh
-            ck_ssh.pub
-          retention-days: 90
-
-      - name: Wait for server and read Game ID
+      # Public repo: logs are public, so no IP / Game ID / keys are printed here.
+      - name: Wait for server to start
         if: steps.grab.outputs.status == 'launched'
         continue-on-error: true
         run: |
-          ID=$(cat instance_id)
-          oci compute instance get --instance-id "$ID" --wait-for-state RUNNING --max-wait-seconds 900 >/dev/null
-          IP=$(oci compute instance list-vnics --instance-id "$ID" --query 'data[0]."public-ip"' --raw-output)
-          echo "Public IP: $IP"
-          SSH="ssh -i ck_ssh -o StrictHostKeyChecking=no -o ConnectTimeout=10 ubuntu@$IP"
-          GID=""
-          for i in $(seq 1 60); do
-            GID=$($SSH "sudo docker exec core-keeper-dedicated cat /home/steam/core-keeper-dedicated/GameID.txt" 2>/dev/null || true)
-            [ -n "$GID" ] && break
-            sleep 30
-          done
+          oci compute instance get --instance-id "$(cat instance_id)" --wait-for-state RUNNING --max-wait-seconds 900 >/dev/null
           {
-            echo "## Core Keeper server launched"
-            echo "- Shape: ${{ steps.grab.outputs.shape }}"
-            echo "- Public IP: \`$IP\`"
-            echo "- Game ID: \`${GID:-not ready yet - check again later}\`"
-            echo "- SSH key: download the corekeeper-ssh-key artifact from this run"
+            echo "## Core Keeper server launched (${{ steps.grab.outputs.shape }})"
+            echo "Check the public IP in the OCI console, then SSH with your own key to read the Game ID."
           } >> "$GITHUB_STEP_SUMMARY"
 
       - name: Disable this workflow (job done)
