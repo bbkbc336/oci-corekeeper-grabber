@@ -1,8 +1,11 @@
 name: Grab OCI A1 for Core Keeper
 
+# Each run keeps retrying for ~5.5 hours, then re-dispatches itself
+# (workflow_dispatch from GITHUB_TOKEN is allowed), so no cron is needed.
+# The hourly cron is only a backup in case the chain breaks.
 on:
   schedule:
-    - cron: "*/6 * * * *"   # every 5 min (public repo = unlimited minutes)
+    - cron: "17 * * * *"
   workflow_dispatch:
 
 concurrency:
@@ -16,7 +19,7 @@ permissions:
 jobs:
   grab:
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 350
     env:
       SUPPRESS_LABEL_WARNING: "True"
     steps:
@@ -37,11 +40,13 @@ jobs:
           OCI_KEY: ${{ secrets.OCI_KEY }}
         run: python scripts/write_config.py
 
-      - name: Try to launch VM
+      - name: Keep trying to launch VM (~5.5 h)
         id: grab
         env:
           SSH_PUBLIC_KEY: ${{ secrets.SSH_PUBLIC_KEY }}
-        run: bash scripts/grab.sh
+          MAX_MINUTES: "325"
+          PAUSE_SECONDS: "120"
+        run: bash scripts/loop.sh
 
       # Public repo: logs are public, so no IP / Game ID / keys are printed here.
       - name: Wait for server to start
@@ -58,4 +63,10 @@ jobs:
         if: always() && (steps.grab.outputs.status == 'launched' || steps.grab.outputs.status == 'exists')
         env:
           GH_TOKEN: ${{ github.token }}
-        run: gh workflow disable grab.yml --repo "${{ github.repository }}"
+        run: gh api -X PUT "repos/${{ github.repository }}/actions/workflows/grab.yml/disable"
+
+      - name: Start next round
+        if: always() && steps.grab.outputs.status == 'failed'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh api -X POST "repos/${{ github.repository }}/actions/workflows/grab.yml/dispatches" -f ref="${{ github.ref_name }}"
