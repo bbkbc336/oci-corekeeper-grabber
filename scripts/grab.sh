@@ -32,7 +32,7 @@ if [ -z "${SSH_PUBLIC_KEY:-}" ]; then
 fi
 printf '%s\n' "$SSH_PUBLIC_KEY" > ck_ssh.pub
 
-for cfg in "2 12" "1 6"; do
+for cfg in "1 6"; do
   set -- $cfg
   echo "Trying ${1} OCPU / ${2} GB ..."
   if oci --no-retry compute instance launch -c "$C" --availability-domain "$AD" --shape VM.Standard.A1.Flex \
