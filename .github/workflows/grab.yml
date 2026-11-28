@@ -15,6 +15,7 @@ concurrency:
 permissions:
   contents: read
   actions: write
+  issues: write
 
 jobs:
   grab:
@@ -58,6 +59,16 @@ jobs:
             echo "## Core Keeper server launched (${{ steps.grab.outputs.shape }})"
             echo "Check the public IP in the OCI console, then SSH with your own key to read the Game ID."
           } >> "$GITHUB_STEP_SUMMARY"
+
+      # Opens an issue so GitHub emails/notifies the owner. No IP or keys in it (public repo).
+      - name: Notify owner (GitHub issue)
+        if: always() && steps.grab.outputs.status == 'launched'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api -X POST "repos/${{ github.repository }}/issues" \
+            -f title="Core Keeper server launched (${{ steps.grab.outputs.shape }})" \
+            -f body="The OCI A1 VM was created and this workflow has been disabled. Check the public IP in the OCI console / mobile app, then SSH with your own key." >/dev/null
 
       - name: Disable this workflow (job done)
         if: always() && (steps.grab.outputs.status == 'launched' || steps.grab.outputs.status == 'exists')
