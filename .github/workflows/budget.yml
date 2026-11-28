@@ -1,0 +1,32 @@
+name: Set up billing alert (one-off)
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  budget:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      SUPPRESS_LABEL_WARNING: "True"
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install OCI CLI
+        run: pip install --quiet oci-cli
+
+      - name: Write OCI config
+        env:
+          OCI_CONFIG: ${{ secrets.OCI_CONFIG }}
+          OCI_KEY: ${{ secrets.OCI_KEY }}
+        run: python scripts/write_config.py
+
+      - name: Create $1 monthly budget + email alerts
+        run: bash scripts/budget.sh
